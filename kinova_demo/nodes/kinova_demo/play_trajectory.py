@@ -26,7 +26,10 @@ def new_trajectory_msg(ts, pos, vel):
 
     DEBUG and print(msg_trajectory.joint_names)
 
-    for i in range(len(ts)):
+    samples = range(len(ts))[::20]
+    print('Downsampling to {} points: {}'.format(len(samples), samples))
+
+    for i in samples:
         point = JointTrajectoryPoint()
         point.positions = pos[i,:]
         point.velocities = vel[i,:]
