@@ -3,6 +3,7 @@
 import rospy
 from hri_safety_sense.msg import EstopStatus
 from kinova_msgs.srv import Start, Stop, ClearTrajectories, SetTorqueControlMode
+from rocoma_msgs.msg import ControllerManagerState
 
 def stop():
     try:
@@ -20,19 +21,40 @@ def start():
 
 def callback(msg):
     global stopped
+    global stopped_soft
     global received_status
     received_status = True
     if stopped:
         if msg.EstopStatus == 0:
-            start()
+            if stopped_soft:
+                print("E-Stop cleared, soft E-Stop active!")
+            else:
+                start()
+                print("Resumed!")
             stopped = False
-            print("Resumed!")
     else:
         if msg.EstopStatus != 0:
             stop()
             stopped = True
             print("E-Stopped!")
 
+def callback_soft(msg):
+    global stopped
+    global stopped_soft
+    if stopped_soft:
+        if msg.estop_cleared:
+            if not stopped:
+                start()
+                print("Resumed after soft E-Stop!")
+            else:
+                print("Cleared soft E-Stop!")
+            stopped_soft = False
+    else:
+        if not msg.estop_cleared:
+            if not stopped:
+                stop()
+            stopped_soft = True
+            print("Soft E-Stopped!")
 if __name__ == '__main__':
     try:
         rospy.init_node('estop')
@@ -51,8 +73,10 @@ if __name__ == '__main__':
 
         stopped = False
         received_status = True
+        stopped_soft = False
 
         rospy.Subscriber("~input", EstopStatus, callback)
+        rospy.Subscriber("~input_soft", ControllerManagerState, callback_soft)
 
         rate = rospy.Rate(0.5)
 
